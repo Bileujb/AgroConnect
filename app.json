@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "agroconnect",
+    "slug": "agroconnect",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#E6F4FE",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "package": "com.bileusteam.agroconnect"
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "674bdfea-670f-4dad-baf5-a79c2da3d990"
+      }
+    },
+    "owner": "bileus-team",
+    "plugins": [
+      "expo-sqlite"
+    ]
+  }
+}
