@@ -1,5 +1,7 @@
-import React from 'react';
-import { View, Text, FlatList, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { useFocusEffect } from '@react-navigation/native';
+import EstadoLista from '../../components/EstadoLista';
+import { View, Text, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
 import { useAuth } from '../../context/AuthContext';
 import { usePedidos } from '../../context/PedidoContext';
 import { useAvaliacoes } from '../../context/AvaliacaoContext';
@@ -14,8 +16,17 @@ const ROTULOS_STATUS = {
 
 export default function MeusPedidosScreen({ navigation }) {
   const { usuario } = useAuth();
-  const { pedidosDoConsumidor } = usePedidos();
-  const { jaAvaliouPedido } = useAvaliacoes();
+  const { pedidosDoConsumidor, recarregar, carregando, erro, atualizarStatus } = usePedidos();
+  const { jaAvaliouPedido, recarregar: recarregarAvaliacoes } = useAvaliacoes();
+  const [cancelando, setCancelando] = useState(null);
+  useFocusEffect(useCallback(() => { recarregar(); recarregarAvaliacoes(); }, [recarregar, recarregarAvaliacoes]));
+  async function cancelar(id) {
+    if (cancelando) return;
+    setCancelando(id);
+    try { await atualizarStatus(id, "cancelado"); }
+    catch (erro) { Alert.alert("Não foi possível cancelar", erro.message); }
+    finally { setCancelando(null); }
+  }
 
   const meusPedidos = pedidosDoConsumidor(usuario?.id);
 
@@ -23,7 +34,9 @@ export default function MeusPedidosScreen({ navigation }) {
     <View style={styles.container}>
       <Text style={styles.titulo}>Meus Pedidos</Text>
 
+      <EstadoLista carregando={carregando} erro={erro} recarregar={recarregar} />
       <FlatList
+        refreshing={carregando} onRefresh={recarregar}
         data={meusPedidos}
         keyExtractor={(item) => item.id}
         contentContainerStyle={{ padding: 20 }}
@@ -31,11 +44,18 @@ export default function MeusPedidosScreen({ navigation }) {
           const jaAvaliado = jaAvaliouPedido(item.id);
           return (
             <View style={styles.card}>
-              <Text style={styles.codigo}>Pedido #{item.id}</Text>
+              <Text style={styles.codigo}>Pedido #{item.id.slice(0, 8)}</Text>
               <Text style={styles.status}>{ROTULOS_STATUS[item.status] || item.status}</Text>
+              {!!item.nomeProdutor && <Text>Produtor: {item.nomeProdutor}</Text>}
+              {item.itens?.map((produto) => <Text key={produto.id} style={{ marginTop: 6 }}>
+                {produto.quantidade}x {produto.nome} — R$ {produto.precoUnitario.toFixed(2)} cada
+              </Text>)}
               <Text style={styles.valor}>R$ {item.valorTotal.toFixed(2)}</Text>
 
-              {jaAvaliado ? (
+              {item.status === 'aguardando' && <Pressable disabled={!!cancelando} onPress={() => cancelar(item.id)}>
+                <Text style={{ color: '#B3261E', marginVertical: 12 }}>{cancelando === item.id ? 'Cancelando...' : 'Cancelar pedido'}</Text>
+              </Pressable>}
+              {item.status !== 'entregue' ? null : jaAvaliado ? (
                 <Text style={styles.avaliado}>✓ Você já avaliou este pedido</Text>
               ) : (
                 <Pressable

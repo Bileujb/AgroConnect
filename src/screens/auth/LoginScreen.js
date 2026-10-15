@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, StyleSheet, Alert, Pressable } from 'react-native';
+import { View, Text, TextInput, StyleSheet, Alert, Pressable, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import BotaoPrimario from '../../components/BotaoPrimario';
 import { useAuth } from '../../context/AuthContext';
@@ -9,25 +9,19 @@ export default function LoginScreen({ route, navigation }) {
   const { login } = useAuth();
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  function handleLogin() {
-    if (!email || !senha) {
-      Alert.alert('Campos obrigatórios', 'Informe e-mail e senha.');
-      return;
-    }
-
-    login({
-      nome: email.split('@')[0],
-      email,
-      tipoUsuario: perfil,
-    });
-
-    const destino = perfil === 'produtor' ? 'ProdutorApp' : 'ConsumidorApp';
-    navigation.reset({ index: 0, routes: [{ name: destino }] });
+  async function handleLogin() {
+    if (enviando) return;
+    if (!email.trim() || !senha) { Alert.alert('Campos obrigatórios', 'Informe e-mail e senha.'); return; }
+    setEnviando(true);
+    try { await login({ email, senha }); }
+    catch (erro) { Alert.alert('Não foi possível entrar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
-    <View style={styles.container}>
+    <ScrollView contentContainerStyle={styles.container} keyboardShouldPersistTaps="handled">
       <LinearGradient colors={['#0A2818', '#1F5E3D']} style={styles.topo}>
         <Pressable style={styles.botaoVoltar} onPress={() => navigation.goBack()}>
           <Text style={styles.botaoVoltarTexto}>‹</Text>
@@ -64,36 +58,22 @@ export default function LoginScreen({ route, navigation }) {
           />
         </View>
 
-        <Text style={styles.esqueciSenha}>Esqueci minha senha</Text>
+        <Text style={styles.esqueciSenha} onPress={() => navigation.navigate('RecuperarSenha', { email })}>Esqueci minha senha</Text>
 
         <View style={{ marginTop: 12 }}>
-          <BotaoPrimario titulo="Entrar" onPress={handleLogin} />
+          <BotaoPrimario titulo={enviando ? "Entrando..." : "Entrar"} disabled={enviando} onPress={handleLogin} />
         </View>
-
-        <View style={styles.divisorLinha}>
-          <View style={styles.linha} />
-          <Text style={styles.divisorTexto}>ou</Text>
-          <View style={styles.linha} />
-        </View>
-
-        <Pressable
-          style={styles.botaoGoogle}
-          onPress={() => Alert.alert('Em breve', 'Login com Google será implementado em breve.')}
-        >
-          <Text style={styles.botaoGoogleIcone}>G</Text>
-          <Text style={styles.botaoGoogleTexto}>Continuar com Google</Text>
-        </Pressable>
 
         <Text style={styles.link} onPress={() => navigation.navigate('Cadastro', { perfil })}>
           Não tenho conta — <Text style={styles.linkDestaque}>Cadastrar</Text>
         </Text>
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#FFFFFF' },
+  container: { flexGrow: 1, backgroundColor: '#FFFFFF' },
   topo: {
     height: 200,
     borderBottomLeftRadius: 32,

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Alert, Image } from 'react-native';
 import BotaoPrimario from '../../components/BotaoPrimario';
 import { useCart } from '../../context/CartContext';
 
@@ -19,13 +19,15 @@ export default function DetalheProdutoScreen({ route, navigation }) {
   return (
     <ScrollView style={styles.container}>
       <View style={styles.imagemPlaceholder}>
-        <Text style={{ fontSize: 56 }}>🌱</Text>
+        <>{produto.imagem ? <Image source={{ uri: produto.imagem }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <Text style={{ fontSize: 56 }}>🌱</Text>}</>
       </View>
 
       <View style={styles.conteudo}>
         <Text style={styles.nome}>{produto.nome}</Text>
         <Text style={styles.preco}>R$ {produto.preco.toFixed(2)}</Text>
         <Text style={styles.categoria}>{produto.categoria}</Text>
+        <Text>{produto.nomeFazenda || produto.nomeProdutor} · {produto.cidadeProdutor}</Text>
+        {produto.notaMedia != null && <Text>⭐ {Number(produto.notaMedia).toFixed(1)}</Text>}
 
         {!!produto.descricao && <Text style={styles.descricao}>{produto.descricao}</Text>}
 
@@ -62,8 +64,8 @@ export default function DetalheProdutoScreen({ route, navigation }) {
             titulo={`Adicionar ${quantidade}x ao carrinho`}
             disabled={produto.quantidadeEstoque <= 0}
             onPress={() => {
-              adicionarItem(produto, quantidade);
-              navigation.navigate('Carrinho');
+              try { adicionarItem(produto, quantidade); navigation.navigate('Carrinho'); }
+              catch (erro) { Alert.alert('Confira a quantidade', erro.message); }
             }}
           />
         </View>

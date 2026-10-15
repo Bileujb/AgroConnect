@@ -39,3 +39,11 @@ yarn-error.*
 # generated native folders
 /ios
 /android
+
+# Configuração local e build Java
+.env
+.env.*
+!.env.example
+**/target/
+backend/.env
+*.log

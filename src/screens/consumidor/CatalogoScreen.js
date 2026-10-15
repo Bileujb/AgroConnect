@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
-import { View, Text, TextInput, FlatList, StyleSheet, Pressable } from 'react-native';
+import React, { useCallback, useState } from 'react';
+import { View, Text, TextInput, FlatList, StyleSheet, Pressable, Alert } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import EstadoLista from '../../components/EstadoLista';
 import ProdutoCard from '../../components/ProdutoCard';
 import { useProdutos } from '../../context/ProdutoContext';
 import { useAuth } from '../../context/AuthContext';
@@ -15,7 +17,7 @@ const CATEGORIAS = [
 ];
 
 export default function CatalogoScreen({ navigation }) {
-  const { produtos } = useProdutos();
+  const { produtos, carregando, erro, recarregar } = useProdutos();
   const { usuario, logout } = useAuth();
   const { itens } = useCart();
   const [busca, setBusca] = useState('');
@@ -23,7 +25,7 @@ export default function CatalogoScreen({ navigation }) {
 
  const produtosFiltrados = produtos
   .filter((p) => {
-    const bateBusca = p.nome.toLowerCase().includes(busca.toLowerCase());
+    const bateBusca = `${p.nome} ${p.nomeProdutor || ''} ${p.nomeFazenda || ''}`.toLowerCase().includes(busca.toLowerCase());
     const bateCategoria = categoriaAtiva === 'Todos' || p.categoria === categoriaAtiva;
     return bateBusca && bateCategoria;
   })
@@ -33,9 +35,10 @@ export default function CatalogoScreen({ navigation }) {
     return distanciaA - distanciaB; // menor distância primeiro
   });
 
-  function handleSair() {
-    logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+  useFocusEffect(useCallback(() => { recarregar(); }, [recarregar]));
+  async function handleSair() {
+    try { await logout(); }
+    catch { Alert.alert('Sessão local encerrada', 'A conexão com o servidor estava indisponível.'); }
   }
 
   return (
@@ -61,6 +64,11 @@ export default function CatalogoScreen({ navigation }) {
         </Pressable>
       </View>
 
+      <View style={{ flexDirection: 'row', gap: 24, padding: 16 }}>
+        <Text style={{ color: '#2E8B57' }} onPress={() => navigation.navigate('MeuPerfil')}>Meu Perfil</Text>
+        <Text style={{ color: '#2E8B57' }} onPress={() => navigation.navigate('MeusPedidos')}>Meus Pedidos</Text>
+      </View>
+      <EstadoLista carregando={carregando} erro={erro} recarregar={recarregar} />
       <TextInput
         style={styles.busca}
         placeholder="Buscar produtos, produtores..."
@@ -96,6 +104,7 @@ export default function CatalogoScreen({ navigation }) {
       />
 
       <FlatList
+        refreshing={carregando} onRefresh={recarregar}
         data={produtosFiltrados}
         keyExtractor={(item) => item.id}
         numColumns={2}

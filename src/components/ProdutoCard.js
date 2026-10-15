@@ -1,11 +1,11 @@
 import React from 'react';
-import { View, Text, Pressable, StyleSheet } from 'react-native';
+import { View, Text, Pressable, StyleSheet, Image } from 'react-native';
 
 export default function ProdutoCard({ produto, onPress }) {
   return (
     <Pressable style={styles.card} onPress={onPress}>
       <View style={styles.imagem}>
-        <Text style={styles.imagemEmoji}>🌿</Text>
+        <>{produto.imagem ? <Image source={{ uri: produto.imagem }} style={{ width: "100%", height: "100%" }} resizeMode="cover" /> : <Text style={styles.imagemEmoji}>🌿</Text>}</>
         <View style={styles.tagCategoria}>
           <Text style={styles.tagCategoriaTexto}>{produto.categoria}</Text>
         </View>

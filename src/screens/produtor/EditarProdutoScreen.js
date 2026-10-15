@@ -14,30 +14,27 @@ export default function EditarProdutoScreen({ route, navigation }) {
   const [preco, setPreco] = useState(String(produto.preco));
   const [quantidadeEstoque, setQuantidadeEstoque] = useState(String(produto.quantidadeEstoque));
   const [categoria, setCategoria] = useState(produto.categoria);
+  const [imagem, setImagem] = useState(produto.imagem || '');
+  const [enviando, setEnviando] = useState(false);
 
-  function handleSalvar() {
+  async function handleSalvar() {
+    if (enviando) return;
     const precoNumero = Number(preco.replace(',', '.'));
     const estoqueNumero = Number(quantidadeEstoque);
-
-    if (!nome || !precoNumero || precoNumero <= 0) {
-      Alert.alert('Dados inválidos', 'Informe nome e um preço maior que zero.');
-      return;
+    if (!nome.trim() || !Number.isFinite(precoNumero) || precoNumero <= 0) {
+      Alert.alert('Dados inválidos', 'Informe nome e um preço válido maior que zero.'); return;
     }
-    if (estoqueNumero < 0) {
-      Alert.alert('Estoque inválido', 'A quantidade não pode ser negativa.');
-      return;
+    if (!Number.isInteger(estoqueNumero) || estoqueNumero < 0) {
+      Alert.alert('Estoque inválido', 'Informe uma quantidade inteira maior ou igual a zero.'); return;
     }
-
-    atualizarProduto(produto.id, {
-      nome,
-      descricao,
-      preco: precoNumero,
-      quantidadeEstoque: estoqueNumero,
-      categoria,
-    });
-
-    Alert.alert('Produto atualizado!', `${nome} foi salvo com sucesso.`);
-    navigation.goBack();
+    const dados = { nome, descricao, preco: precoNumero, quantidadeEstoque: estoqueNumero, categoria, imagem: imagem.trim() || null };
+    setEnviando(true);
+    try {
+      await atualizarProduto(produto.id, dados);
+      Alert.alert('Produto salvo!', `${nome} foi salvo no banco.`);
+      navigation.goBack();
+    } catch (erro) { Alert.alert('Não foi possível salvar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
@@ -79,8 +76,10 @@ export default function EditarProdutoScreen({ route, navigation }) {
         keyboardType="numeric"
       />
 
+      <Text style={styles.rotulo}>URL da imagem (opcional)</Text>
+      <TextInput style={styles.input} value={imagem} onChangeText={setImagem} autoCapitalize="none" />
       <View style={{ height: 24 }} />
-      <BotaoPrimario titulo="Salvar alterações" onPress={handleSalvar} />
+      <BotaoPrimario titulo={enviando ? "Salvando..." : "Salvar alterações"} disabled={enviando} onPress={handleSalvar} />
     </ScrollView>
   );
 }

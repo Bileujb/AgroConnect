@@ -6,46 +6,39 @@ import { useAuth } from '../../context/AuthContext';
 
 export default function CadastroScreen({ route, navigation }) {
   const perfil = route.params?.perfil || 'consumidor';
-  const { login } = useAuth();
+  const { cadastrar } = useAuth();
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
+  const [confirmacao, setConfirmacao] = useState('');
+  const [enviando, setEnviando] = useState(false);
   const [cidade, setCidade] = useState('');
   const [nomeFazenda, setNomeFazenda] = useState('');
   const [cnpj, setCnpj] = useState('');
   const [enderecoFazenda, setEnderecoFazenda] = useState('');
   const [enderecoEntrega, setEnderecoEntrega] = useState('');
 
-  function handleCadastro() {
-    if (!nome || !email || !senha) {
-      Alert.alert('Campos obrigatórios', 'Preencha nome, e-mail e senha.');
-      return;
+  async function handleCadastro() {
+    if (enviando) return;
+    if (!nome.trim() || !email.trim() || !senha) { Alert.alert('Campos obrigatórios', 'Preencha nome, e-mail e senha.'); return; }
+    if (senha.length < 8 || senha !== confirmacao) { Alert.alert('Confira as senhas', 'Use pelo menos 8 caracteres e repita a mesma senha.'); return; }
+    if (!cidade) { Alert.alert('Cidade obrigatória', 'Selecione sua cidade.'); return; }
+    if (perfil === 'produtor' && (!nomeFazenda.trim() || !cnpj.trim() || !enderecoFazenda.trim())) {
+      Alert.alert('Dados da fazenda', 'Preencha nome da fazenda, CNPJ e endereço.'); return;
     }
-    if (!cidade) {
-      Alert.alert('Cidade obrigatória', 'Selecione sua cidade.');
-      return;
-    }
-    if (perfil === 'produtor' && (!nomeFazenda || !cnpj || !enderecoFazenda)) {
-      Alert.alert('Dados da fazenda', 'Preencha nome da fazenda, CNPJ e endereço.');
-      return;
-    }
-    if (perfil === 'consumidor' && !enderecoEntrega) {
-      Alert.alert('Endereço obrigatório', 'Informe o endereço de entrega.');
-      return;
-    }
-
-    login({
-      nome,
-      email,
-      tipoUsuario: perfil,
-      ...(perfil === 'produtor'
-        ? { nomeFazenda, cnpj, enderecoFazenda, cidade }
-        : { enderecoEntrega, cidade }),
-    });
-
-    const destino = perfil === 'produtor' ? 'ProdutorApp' : 'ConsumidorApp';
-    navigation.reset({ index: 0, routes: [{ name: destino }] });
+    if (perfil === 'consumidor' && !enderecoEntrega.trim()) { Alert.alert('Endereço obrigatório', 'Informe o endereço de entrega.'); return; }
+    setEnviando(true);
+    try {
+      const resposta = await cadastrar({ nome: nome.trim(), email: email.trim(), senha, tipoUsuario: perfil,
+        cidade, nomeFazenda: nomeFazenda.trim(), cnpj: cnpj.trim(),
+        enderecoFazenda: enderecoFazenda.trim(), enderecoEntrega: enderecoEntrega.trim() });
+      if (resposta.confirmarEmail) {
+        Alert.alert('Confira seu e-mail', resposta.mensagem);
+        navigation.navigate('Login', { perfil });
+      }
+    } catch (erro) { Alert.alert('Não foi possível cadastrar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
@@ -81,6 +74,10 @@ export default function CadastroScreen({ route, navigation }) {
         <TextInput style={styles.campoInput} placeholder="Senha" value={senha} onChangeText={setSenha} secureTextEntry />
       </View>
 
+      <View style={styles.campo}>
+        <Text style={styles.campoIcone}>🔒</Text>
+        <TextInput style={styles.campoInput} placeholder="Confirmar senha" value={confirmacao} onChangeText={setConfirmacao} secureTextEntry />
+      </View>
       <Text style={styles.rotuloSecao}>Cidade</Text>
       <SeletorCidade cidadeSelecionada={cidade} onSelecionar={setCidade} />
 
@@ -130,7 +127,7 @@ export default function CadastroScreen({ route, navigation }) {
       )}
 
       <View style={{ marginTop: 16 }}>
-        <BotaoPrimario titulo="Criar conta" onPress={handleCadastro} />
+        <BotaoPrimario titulo={enviando ? "Cadastrando..." : "Criar conta"} disabled={enviando} onPress={handleCadastro} />
       </View>
 
       <Text style={styles.link} onPress={() => navigation.goBack()}>

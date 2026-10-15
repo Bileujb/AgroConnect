@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="referrer" content="no-referrer"><title>Nova senha · AgroConnect</title>
+  <style>
+    *{box-sizing:border-box}body{margin:0;background:#f4faf6;color:#1f5e3d;font:16px system-ui,sans-serif;min-height:100vh;display:grid;place-items:center;padding:24px}
+    main{max-width:440px;width:100%;background:white;padding:32px;border-radius:18px;border:1px solid #e3e9e5}h1{font-size:25px}p{line-height:1.5}label{display:block;margin-top:18px}input,button{width:100%;padding:13px;font:inherit;border-radius:9px}input{margin-top:7px;border:1px solid #b8cbbb}button{margin-top:24px;border:0;background:#2e8b57;color:white;cursor:pointer}button:disabled{opacity:.6}#mensagem{color:#333;overflow-wrap:anywhere}
+  </style>
+</head>
+<body><main>
+  <h1>AgroConnect · Nova senha</h1>
+  <p>Escolha uma nova senha. Depois, volte ao aplicativo para entrar.</p>
+  <form id="formulario">
+    <label for="senha">Nova senha</label><input id="senha" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
+    <label for="confirmacao">Repita a nova senha</label><input id="confirmacao" type="password" autocomplete="new-password" minlength="8" maxlength="72" required>
+    <button id="salvar">Salvar nova senha</button>
+  </form><p id="mensagem" role="status" aria-live="polite"></p>
+</main><script>
+  // O Supabase envia o token no fragmento. Ele fica somente na memória desta página.
+  const parametros=new URLSearchParams(location.hash.slice(1));
+  let token=parametros.get('access_token');
+  history.replaceState(null,'',location.pathname);
+  const formulario=document.getElementById('formulario');
+  const mensagem=document.getElementById('mensagem');
+  const salvar=document.getElementById('salvar');
+  if (!token || parametros.get('type')!=='recovery') {
+    token=null; formulario.hidden=true;
+    mensagem.textContent='Link ausente, inválido ou expirado. Solicite outro em “Esqueci minha senha” no aplicativo.';
+  }
+  formulario.addEventListener('submit',async evento=>{
+    evento.preventDefault();
+    const senha=document.getElementById('senha').value;
+    if (senha!==document.getElementById('confirmacao').value) { mensagem.textContent='As senhas precisam ser iguais.'; return; }
+    salvar.disabled=true; mensagem.textContent='Salvando...';
+    try {
+      const resposta=await fetch('/auth/nova-senha',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify({senha})});
+      const dados=await resposta.json();
+      if (!resposta.ok) throw new Error(dados.mensagem || 'Não foi possível alterar a senha.');
+      token=null; formulario.reset(); formulario.hidden=true; mensagem.textContent=dados.mensagem;
+    } catch(erro) { mensagem.textContent=erro.message; }
+    finally { salvar.disabled=false; }
+  });
+</script></body></html>

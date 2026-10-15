@@ -20,30 +20,27 @@ export default function CadastrarProdutoScreen({ navigation }) {
   const [preco, setPreco] = useState('');
   const [quantidadeEstoque, setQuantidadeEstoque] = useState('');
   const [categoria, setCategoria] = useState('Verduras');
+  const [imagem, setImagem] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  function handleSalvar() {
+  async function handleSalvar() {
+    if (enviando) return;
     const precoNumero = Number(preco.replace(',', '.'));
     const estoqueNumero = Number(quantidadeEstoque);
-
-    if (!nome || !precoNumero || precoNumero <= 0) {
-      Alert.alert('Dados inválidos', 'Informe nome e um preço maior que zero.');
-      return;
+    if (!nome.trim() || !Number.isFinite(precoNumero) || precoNumero <= 0) {
+      Alert.alert('Dados inválidos', 'Informe nome e um preço válido maior que zero.'); return;
     }
-
-    cadastrarProduto(
-  {
-    nome,
-    descricao,
-    preco: precoNumero,
-    quantidadeEstoque: estoqueNumero || 0,
-    categoria,
-    imagem: null,
-    cidadeProdutor: usuario?.cidade || '',
-  },
-  usuario?.id || 'produtor-teste'
-);
-    Alert.alert('Produto cadastrado!', `${nome} já está disponível no catálogo.`);
-    navigation.goBack();
+    if (!Number.isInteger(estoqueNumero) || estoqueNumero < 0) {
+      Alert.alert('Estoque inválido', 'Informe uma quantidade inteira maior ou igual a zero.'); return;
+    }
+    const dados = { nome, descricao, preco: precoNumero, quantidadeEstoque: estoqueNumero, categoria, imagem: imagem.trim() || null };
+    setEnviando(true);
+    try {
+      await cadastrarProduto(dados);
+      Alert.alert('Produto salvo!', `${nome} foi salvo no banco.`);
+      navigation.goBack();
+    } catch (erro) { Alert.alert('Não foi possível salvar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
@@ -117,8 +114,11 @@ export default function CadastrarProdutoScreen({ navigation }) {
           </View>
         </View>
 
+        <View style={styles.campo}>
+          <TextInput style={styles.campoInput} placeholder="URL da imagem (opcional)" value={imagem} onChangeText={setImagem} autoCapitalize="none" />
+        </View>
         <View style={{ marginTop: 12 }}>
-          <BotaoPrimario titulo="Salvar produto" onPress={handleSalvar} />
+          <BotaoPrimario titulo={enviando ? "Salvando..." : "Salvar produto"} disabled={enviando} onPress={handleSalvar} />
         </View>
       </View>
     </ScrollView>

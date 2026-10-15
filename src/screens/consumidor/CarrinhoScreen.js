@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Pressable } from 'react-native';
 import BotaoPrimario from '../../components/BotaoPrimario';
 import { useCart } from '../../context/CartContext';
@@ -6,26 +6,28 @@ import { useAuth } from '../../context/AuthContext';
 import { usePedidos } from '../../context/PedidoContext';
 
 export default function CarrinhoScreen({ navigation }) {
-  const { itens, removerItem, valorTotal, limparCarrinho } = useCart();
+  const { itens, removerItem, valorTotal, limparCarrinho, chaveCheckout } = useCart();
   const { usuario } = useAuth();
   const { criarPedido } = usePedidos();
+  const [enviando, setEnviando] = useState(false);
 
-  function finalizarPedido() {
+  async function finalizarPedido() {
     if (itens.length === 0) {
       Alert.alert('Carrinho vazio', 'Adicione produtos antes de finalizar.');
       return;
     }
 
-    const pedido = criarPedido({
-      consumidorId: usuario?.id,
-      itens,
-      valorTotal,
-    });
-
-    limparCarrinho();
-    Alert.alert('Pedido realizado!', `Pedido #${pedido.id} criado. Total: R$ ${valorTotal.toFixed(2)}`, [
-      { text: 'Ver meus pedidos', onPress: () => navigation.navigate('MeusPedidos') },
-    ]);
+    if (enviando) return;
+    setEnviando(true);
+    try {
+      const pedidos = await criarPedido({ itens, chave: chaveCheckout() });
+      const total = pedidos.reduce((soma, p) => soma + p.valorTotal, 0);
+      limparCarrinho();
+      Alert.alert('Pedido realizado!', `${pedidos.length} pedido(s), separados por produtor. Total confirmado: R$ ${total.toFixed(2)}`, [
+        { text: 'Ver meus pedidos', onPress: () => navigation.navigate('MeusPedidos') },
+      ]);
+    } catch (erro) { Alert.alert('Não foi possível finalizar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
@@ -43,7 +45,7 @@ export default function CarrinhoScreen({ navigation }) {
               <Text style={styles.itemQuantidade}>Qtd: {item.quantidade}</Text>
             </View>
             <Text style={styles.itemValor}>R$ {(item.quantidade * item.precoUnitario).toFixed(2)}</Text>
-            <Pressable onPress={() => removerItem(item.produtoId)} style={{ marginLeft: 12 }}>
+            <Pressable disabled={enviando} onPress={() => removerItem(item.produtoId)} style={{ marginLeft: 12 }}>
               <Text style={styles.remover}>Remover</Text>
             </Pressable>
           </View>
@@ -52,8 +54,8 @@ export default function CarrinhoScreen({ navigation }) {
       />
 
       <View style={styles.rodape}>
-        <Text style={styles.total}>Total: R$ {valorTotal.toFixed(2)}</Text>
-        <BotaoPrimario titulo="Finalizar pedido" onPress={finalizarPedido} />
+        <Text style={styles.total}>Total estimado: R$ {valorTotal.toFixed(2)}</Text>
+        <BotaoPrimario titulo={enviando ? "Enviando..." : "Finalizar pedido"} disabled={enviando || !itens.length} onPress={finalizarPedido} />
       </View>
     </View>
   );

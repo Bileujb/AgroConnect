@@ -1,51 +1,20 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import useListaApi from '../hooks/useListaApi';
+import { api } from '../services/api';
 
 const AvaliacaoContext = createContext(null);
-
 export function AvaliacaoProvider({ children }) {
-  const [avaliacoes, setAvaliacoes] = useState([]);
-
-  function avaliarProdutor({ produtorId, consumidorId, pedidoId, nota, comentario }) {
-    if (nota < 1 || nota > 5) {
-      throw new Error('Nota deve estar entre 1 e 5');
-    }
-
-    const novaAvaliacao = {
-      id: Date.now().toString(),
-      produtorId,
-      consumidorId,
-      pedidoId,
-      nota,
-      comentario: comentario || '',
-      createdAt: new Date().toISOString(),
-    };
-
-    setAvaliacoes((atual) => [...atual, novaAvaliacao]);
-    return novaAvaliacao;
+  const lista = useListaApi('/api/avaliacoes');
+  async function avaliarProdutor({ pedidoId, nota, comentario }) {
+    const salva = await api('/api/avaliacoes', { method: 'POST', body: { pedidoId, nota, comentario } });
+    lista.setDados((atual) => [salva, ...atual]); return salva;
   }
-
-  // Calcula a média de notas de um produtor específico (igual a "nota da loja" do iFood)
-  function mediaDoProdutor(produtorId) {
-    const avaliacoesDoProdutor = avaliacoes.filter((a) => a.produtorId === produtorId);
-    if (avaliacoesDoProdutor.length === 0) return null; // ainda sem avaliação nenhuma
-
-    const soma = avaliacoesDoProdutor.reduce((total, a) => total + a.nota, 0);
-    return soma / avaliacoesDoProdutor.length;
+  function mediaDoProdutor(id) {
+    const notas = lista.dados.filter((a) => a.produtorId === id);
+    return notas.length ? notas.reduce((s, a) => s + a.nota, 0) / notas.length : null;
   }
-
-  function jaAvaliouPedido(pedidoId) {
-    return avaliacoes.some((a) => a.pedidoId === pedidoId);
-  }
-
-  return (
-    <AvaliacaoContext.Provider value={{ avaliacoes, avaliarProdutor, mediaDoProdutor, jaAvaliouPedido }}>
-      {children}
-    </AvaliacaoContext.Provider>
-  );
+  return <AvaliacaoContext.Provider value={{ avaliacoes: lista.dados, avaliarProdutor, mediaDoProdutor,
+    jaAvaliouPedido: (id) => lista.dados.some((a) => a.pedidoId === id), recarregar: lista.recarregar,
+    carregando: lista.carregando, erro: lista.erro }}>{children}</AvaliacaoContext.Provider>;
 }
-
-export function useAvaliacoes() {
-  const context = useContext(AvaliacaoContext);
-  if (!context) throw new Error('useAvaliacoes deve ser usado dentro de AvaliacaoProvider');
-  return context;
-}
+export function useAvaliacoes() { return useContext(AvaliacaoContext); }

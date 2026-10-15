@@ -1,51 +1,24 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext } from 'react';
+import useListaApi from '../hooks/useListaApi';
+import { api } from '../services/api';
 
 const PedidoContext = createContext(null);
-
 export function PedidoProvider({ children }) {
-  const [pedidos, setPedidos] = useState([]);
-
-  function criarPedido({ consumidorId, itens, valorTotal }) {
-    // cada item do carrinho pode ser de um produtor diferente;
-    // por simplicidade agora, assumimos 1 produtor por pedido (o do primeiro item)
-    const novoPedido = {
-      id: Date.now().toString(),
-      consumidorId,
-      produtorId: itens[0]?.produtorId,
-      itens,
-      valorTotal,
-      status: 'aguardando',
-      createdAt: new Date().toISOString(),
-    };
-    setPedidos((atual) => [...atual, novoPedido]);
-    return novoPedido;
+  const lista = useListaApi('/api/pedidos');
+  async function criarPedido({ itens, chave }) {
+    const salvos = await api('/api/pedidos', { method: 'POST', body: {
+      chave, itens: itens.map((item) => ({ produtoId: item.produtoId, quantidade: item.quantidade })),
+    } });
+    lista.setDados((atual) => [...salvos, ...atual.filter((p) => !salvos.some((s) => s.id === p.id))]);
+    return salvos;
   }
-
-  function atualizarStatus(pedidoId, novoStatus) {
-    setPedidos((atual) =>
-      atual.map((p) => (p.id === pedidoId ? { ...p, status: novoStatus } : p))
-    );
+  async function atualizarStatus(id, status) {
+    const salvo = await api(`/api/pedidos/${id}/status`, { method: 'PATCH', body: { status } });
+    lista.setDados((atual) => atual.map((p) => p.id === id ? { ...p, ...salvo } : p)); return salvo;
   }
-
-  function pedidosDoConsumidor(consumidorId) {
-    return pedidos.filter((p) => p.consumidorId === consumidorId);
-  }
-
-  function pedidosDoProdutor(produtorId) {
-    return pedidos.filter((p) => p.produtorId === produtorId);
-  }
-
-  return (
-    <PedidoContext.Provider
-      value={{ pedidos, criarPedido, atualizarStatus, pedidosDoConsumidor, pedidosDoProdutor }}
-    >
-      {children}
-    </PedidoContext.Provider>
-  );
+  return <PedidoContext.Provider value={{ pedidos: lista.dados, carregando: lista.carregando, erro: lista.erro,
+    recarregar: lista.recarregar, criarPedido, atualizarStatus,
+    pedidosDoConsumidor: (id) => lista.dados.filter((p) => p.consumidorId === id),
+    pedidosDoProdutor: (id) => lista.dados.filter((p) => p.produtorId === id) }}>{children}</PedidoContext.Provider>;
 }
-
-export function usePedidos() {
-  const context = useContext(PedidoContext);
-  if (!context) throw new Error('usePedidos deve ser usado dentro de PedidoProvider');
-  return context;
-}
+export function usePedidos() { return useContext(PedidoContext); }

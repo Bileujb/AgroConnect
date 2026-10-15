@@ -1,12 +1,14 @@
-import React from 'react';
+import React, { useCallback } from 'react';
 import { View, Text, FlatList, StyleSheet, Alert, Pressable } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import EstadoLista from '../../components/EstadoLista';
 import BotaoPrimario from '../../components/BotaoPrimario';
 import { useAuth } from '../../context/AuthContext';
 import { useProdutos } from '../../context/ProdutoContext';
 
 export default function HomeProdutorScreen({ navigation }) {
   const { usuario, logout } = useAuth();
-  const { produtosDoProdutor, removerProduto } = useProdutos();
+  const { produtosDoProdutor, removerProduto, carregando, erro, recarregar } = useProdutos();
 
   const meusProdutos = produtosDoProdutor(usuario?.id);
 
@@ -16,14 +18,15 @@ export default function HomeProdutorScreen({ navigation }) {
       `Tem certeza que deseja excluir "${produto.nome}"?`,
       [
         { text: 'Cancelar', style: 'cancel' },
-        { text: 'Excluir', style: 'destructive', onPress: () => removerProduto(produto.id) },
+        { text: 'Excluir', style: 'destructive', onPress: async () => { try { await removerProduto(produto.id); } catch (erro) { Alert.alert('Não foi possível excluir', erro.message); } } },
       ]
     );
   }
 
-  function handleSair() {
-    logout();
-    navigation.reset({ index: 0, routes: [{ name: 'Splash' }] });
+  useFocusEffect(useCallback(() => { recarregar(); }, [recarregar]));
+  async function handleSair() {
+    try { await logout(); }
+    catch { Alert.alert('Sessão local encerrada', 'A conexão com o servidor estava indisponível.'); }
   }
 
   return (
@@ -33,6 +36,11 @@ export default function HomeProdutorScreen({ navigation }) {
         <Text style={styles.link} onPress={handleSair}>Sair</Text>
       </View>
 
+      <View style={{ flexDirection: 'row', gap: 24, padding: 16 }}>
+        <Text style={styles.link} onPress={() => navigation.navigate('MeuPerfil')}>Meu Perfil</Text>
+        <Text style={styles.link} onPress={() => navigation.navigate('PedidosProdutor')}>Pedidos recebidos</Text>
+      </View>
+      <EstadoLista carregando={carregando} erro={erro} recarregar={recarregar} />
       <View style={styles.cardMetrica}>
         <Text style={styles.metricaValor}>{meusProdutos.length}</Text>
         <Text style={styles.metricaLabel}>Produtos cadastrados</Text>
@@ -47,6 +55,7 @@ export default function HomeProdutorScreen({ navigation }) {
 
       <FlatList
         style={{ marginTop: 20 }}
+        refreshing={carregando} onRefresh={recarregar}
         data={meusProdutos}
         keyExtractor={(item) => item.id}
         ListHeaderComponent={

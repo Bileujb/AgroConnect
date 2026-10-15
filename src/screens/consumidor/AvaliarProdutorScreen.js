@@ -10,23 +10,22 @@ export default function AvaliarProdutorScreen({ route, navigation }) {
   const { usuario } = useAuth();
   const [nota, setNota] = useState(0);
   const [comentario, setComentario] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
-  function handleEnviar() {
+  async function handleEnviar() {
     if (nota === 0) {
       Alert.alert('Escolha uma nota', 'Toque nas estrelas para avaliar de 1 a 5.');
       return;
     }
 
-    avaliarProdutor({
-      produtorId: pedido.produtorId,
-      consumidorId: usuario?.id,
-      pedidoId: pedido.id,
-      nota,
-      comentario,
-    });
-
-    Alert.alert('Obrigado!', 'Sua avaliação foi enviada.');
-    navigation.goBack();
+    if (enviando) return;
+    setEnviando(true);
+    try {
+      await avaliarProdutor({ pedidoId: pedido.id, nota, comentario });
+      Alert.alert('Obrigado!', 'Sua avaliação foi salva.');
+      navigation.goBack();
+    } catch (erro) { Alert.alert('Não foi possível avaliar', erro.message); }
+    finally { setEnviando(false); }
   }
 
   return (
@@ -53,7 +52,7 @@ export default function AvaliarProdutorScreen({ route, navigation }) {
       />
 
       <View style={{ marginTop: 20 }}>
-        <BotaoPrimario titulo="Enviar avaliação" onPress={handleEnviar} />
+        <BotaoPrimario titulo={enviando ? "Enviando..." : "Enviar avaliação"} disabled={enviando} onPress={handleEnviar} />
       </View>
     </View>
   );

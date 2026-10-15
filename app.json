@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "agroconnect",
+    "name": "AgroConnect",
     "slug": "agroconnect",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -28,7 +28,7 @@
     },
     "owner": "bileus-team",
     "plugins": [
-      "expo-sqlite"
+      "expo-secure-store"
     ]
   }
 }
